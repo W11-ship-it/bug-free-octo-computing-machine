@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Spin } from 'antd';
 import { useAuth } from './auth-context';
 
 export default function RequireAuth({ children }) {
@@ -15,7 +16,11 @@ export default function RequireAuth({ children }) {
   }, [loading, isAuthenticated, router]);
 
   if (loading) {
-    return null;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Spin size="large" />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {

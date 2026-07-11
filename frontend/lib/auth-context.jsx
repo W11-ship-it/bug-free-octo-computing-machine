@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
 const AuthContext = createContext(null);
@@ -44,10 +44,20 @@ export function AuthProvider({ children }) {
     router.push('/login');
   }, [router]);
 
+  const userInfo = useMemo(() => {
+    if (!token) return null;
+    try {
+      return JSON.parse(atob(token.split('.')[1]));
+    } catch {
+      return null;
+    }
+  }, [token]);
+
   const isAuthenticated = !!token;
+  const username = userInfo?.username || '用户';
 
   return (
-    <AuthContext.Provider value={{ token, login, logout, isAuthenticated, loading }}>
+    <AuthContext.Provider value={{ token, login, logout, isAuthenticated, loading, userInfo, username }}>
       {children}
     </AuthContext.Provider>
   );

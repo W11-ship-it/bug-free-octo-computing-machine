@@ -14,24 +14,29 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   UserOutlined,
+  BarChartOutlined,
+  SettingOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from '../lib/auth-context';
 
 const { Header, Sider, Content } = Layout;
 
 const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: '仪表盘' },
+  { key: '/stats', icon: <BarChartOutlined />, label: '学习统计' },
   { key: '/notes', icon: <FileTextOutlined />, label: '学习笔记' },
   { key: '/tasks', icon: <CheckSquareOutlined />, label: '任务管理' },
+  { key: '/ai', icon: <RobotOutlined />, label: 'AI助手' },
+  { key: '/settings', icon: <SettingOutlined />, label: '个人设置' },
 ];
 
 function LayoutContent({ children }) {
   const pathname = usePathname();
-  const { logout, token } = useAuth();
+  const router = useRouter();
+  const { logout, username } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-
-  const username = token ? JSON.parse(atob(token.split('.')[1])).username : '用户';
 
   if (pathname === '/login') {
     return <div style={{ minHeight: '100vh' }}>{children}</div>;
@@ -65,6 +70,10 @@ function LayoutContent({ children }) {
           selectedKeys={[pathname]} 
           items={menuItems}
           style={{ borderRight: 0 }}
+          onClick={(e) => {
+            console.log('Menu clicked:', e);
+            router.push(e.key);
+          }}
         />
       </Sider>
       <Layout>
