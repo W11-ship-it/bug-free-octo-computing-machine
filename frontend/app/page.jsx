@@ -4,6 +4,7 @@ import { Card, Col, Row, Statistic, Typography, List, Tag } from 'antd';
 import { BookOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
+import RequireAuth from '../lib/require-auth';
 
 const { Title } = Typography;
 
@@ -14,11 +15,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
       try {
         const [notesRes, tasksRes] = await Promise.all([
           api.get('/api/notes'),
@@ -42,45 +38,47 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div>
-      <Title level={3}>学习仪表盘</Title>
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={8}>
-          <Card>
-            <Statistic title="学习笔记" value={stats.notes} prefix={<BookOutlined />} loading={loading} />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card>
-            <Statistic title="待办任务" value={stats.tasks - stats.completed} prefix={<ClockCircleOutlined />} loading={loading} />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card>
-            <Statistic title="已完成任务" value={stats.completed} prefix={<CheckCircleOutlined />} loading={loading} />
-          </Card>
-        </Col>
-      </Row>
-      <Card title="最近笔记">
-        <List
-          loading={loading}
-          dataSource={recentNotes}
-          locale={{ emptyText: '暂无笔记，去创建一个吧' }}
-          renderItem={(item) => (
-            <List.Item>
-              <List.Item.Meta
-                title={item.title}
-                description={
-                  <>
-                    <Tag color="blue">{item.subject || '未分类'}</Tag>
-                    {item.created_at && new Date(item.created_at).toLocaleDateString('zh-CN')}
-                  </>
-                }
-              />
-            </List.Item>
-          )}
-        />
-      </Card>
-    </div>
+    <RequireAuth>
+      <div>
+        <Title level={3}>学习仪表盘</Title>
+        <Row gutter={16} style={{ marginBottom: 24 }}>
+          <Col span={8}>
+            <Card>
+              <Statistic title="学习笔记" value={stats.notes} prefix={<BookOutlined />} loading={loading} />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card>
+              <Statistic title="待办任务" value={stats.tasks - stats.completed} prefix={<ClockCircleOutlined />} loading={loading} />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card>
+              <Statistic title="已完成任务" value={stats.completed} prefix={<CheckCircleOutlined />} loading={loading} />
+            </Card>
+          </Col>
+        </Row>
+        <Card title="最近笔记">
+          <List
+            loading={loading}
+            dataSource={recentNotes}
+            locale={{ emptyText: '暂无笔记，去创建一个吧' }}
+            renderItem={(item) => (
+              <List.Item>
+                <List.Item.Meta
+                  title={item.title}
+                  description={
+                    <>
+                      <Tag color="blue">{item.subject || '未分类'}</Tag>
+                      {item.created_at && new Date(item.created_at).toLocaleDateString('zh-CN')}
+                    </>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </Card>
+      </div>
+    </RequireAuth>
   );
 }

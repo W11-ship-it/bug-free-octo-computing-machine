@@ -1,0 +1,56 @@
+'use client';
+
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+
+const AuthContext = createContext(null);
+
+export function AuthProvider({ children }) {
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+      try {
+        const payload = JSON.parse(atob(storedToken.split('.')[1]));
+        if (payload.exp * 1000 > Date.now()) {
+          setToken(storedToken);
+        } else {
+          localStorage.removeItem('token');
+        }
+      } catch {
+        localStorage.removeItem('token');
+      }
+    }
+    setLoading(false);
+  }, []);
+
+  const login = useCallback((newToken) => {
+    setToken(newToken);
+    localStorage.setItem('token', newToken);
+  }, []);
+
+  const logout = useCallback(() => {
+    setToken(null);
+    localStorage.removeItem('token');
+    router.push('/login');
+  }, [router]);
+
+  const isAuthenticated = !!token;
+
+  return (
+    <AuthContext.Provider value={{ token, login, logout, isAuthenticated, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

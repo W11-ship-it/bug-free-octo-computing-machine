@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Typography, Button, Table, Modal, Form, Input, Tag, message, Space } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import api from '../../lib/api';
+import RequireAuth from '../../lib/require-auth';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -21,11 +22,6 @@ export default function NotesPage() {
 
   const fetchNotes = async () => {
     setLoading(true);
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
     try {
       const res = await api.get('/api/notes');
       setNotes(res.data.data || []);
@@ -94,27 +90,29 @@ export default function NotesPage() {
   ];
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={3} style={{ margin: 0 }}>学习笔记</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingNote(null); form.resetFields(); setModalOpen(true); }}>
-          新建笔记
-        </Button>
+    <RequireAuth>
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+          <Title level={3} style={{ margin: 0 }}>学习笔记</Title>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingNote(null); form.resetFields(); setModalOpen(true); }}>
+            新建笔记
+          </Button>
+        </div>
+        <Table columns={columns} dataSource={notes} rowKey="id" loading={loading} />
+        <Modal title={editingNote ? '编辑笔记' : '新建笔记'} open={modalOpen} onOk={handleSave} onCancel={() => setModalOpen(false)}>
+          <Form form={form} layout="vertical">
+            <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="subject" label="学科">
+              <Input placeholder="如：数学、英语、编程" />
+            </Form.Item>
+            <Form.Item name="content" label="内容" rules={[{ required: true, message: '请输入内容' }]}>
+              <TextArea rows={4} />
+            </Form.Item>
+          </Form>
+        </Modal>
       </div>
-      <Table columns={columns} dataSource={notes} rowKey="id" loading={loading} />
-      <Modal title={editingNote ? '编辑笔记' : '新建笔记'} open={modalOpen} onOk={handleSave} onCancel={() => setModalOpen(false)}>
-        <Form form={form} layout="vertical">
-          <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="subject" label="学科">
-            <Input placeholder="如：数学、英语、编程" />
-          </Form.Item>
-          <Form.Item name="content" label="内容" rules={[{ required: true, message: '请输入内容' }]}>
-            <TextArea rows={4} />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+    </RequireAuth>
   );
 }

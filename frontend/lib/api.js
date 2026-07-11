@@ -5,7 +5,6 @@ const api = axios.create({
   timeout: 10000,
 });
 
-// 请求拦截器：自动附加 token
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('token');
@@ -16,14 +15,25 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// 响应拦截器：统一处理错误
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
+        const token = localStorage.getItem('token');
+        if (token && isTokenExpired(token)) {
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

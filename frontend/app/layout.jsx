@@ -12,6 +12,7 @@ import {
   LogoutOutlined,
 } from '@ant-design/icons';
 import { usePathname } from 'next/navigation';
+import { AuthProvider, useAuth } from '../lib/auth-context';
 
 const { Header, Sider, Content } = Layout;
 
@@ -21,30 +22,39 @@ const menuItems = [
   { key: '/tasks', icon: <CheckSquareOutlined />, label: <Link href="/tasks">任务管理</Link> },
 ];
 
-export default function RootLayout({ children }) {
+function LayoutContent({ children }) {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
+  return (
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider theme="light" width={200}>
+        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 18 }}>
+          StudyHub
+        </div>
+        <Menu mode="inline" selectedKeys={[pathname]} items={menuItems} />
+      </Sider>
+      <Layout>
+        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderBottom: '1px solid #f0f0f0' }}>
+          <LogoutOutlined style={{ fontSize: 18, cursor: 'pointer' }} onClick={logout} />
+        </Header>
+        <Content style={{ margin: 24, padding: 24, background: '#fff', borderRadius: 8 }}>
+          {children}
+        </Content>
+      </Layout>
+    </Layout>
+  );
+}
+
+export default function RootLayout({ children }) {
   return (
     <html lang="zh-CN">
       <body style={{ margin: 0 }}>
         <AntdRegistry>
           <ConfigProvider locale={zhCN}>
-            <Layout style={{ minHeight: '100vh' }}>
-              <Sider theme="light" width={200}>
-                <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 18 }}>
-                  StudyHub
-                </div>
-                <Menu mode="inline" selectedKeys={[pathname]} items={menuItems} />
-              </Sider>
-              <Layout>
-                <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderBottom: '1px solid #f0f0f0' }}>
-                  <LogoutOutlined style={{ fontSize: 18, cursor: 'pointer' }} />
-                </Header>
-                <Content style={{ margin: 24, padding: 24, background: '#fff', borderRadius: 8 }}>
-                  {children}
-                </Content>
-              </Layout>
-            </Layout>
+            <AuthProvider>
+              <LayoutContent>{children}</LayoutContent>
+            </AuthProvider>
           </ConfigProvider>
         </AntdRegistry>
       </body>

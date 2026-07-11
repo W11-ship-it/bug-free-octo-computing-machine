@@ -5,23 +5,23 @@ import { Card, Form, Input, Button, Typography, Tabs, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import api from '../../lib/api';
+import { useAuth } from '../../lib/auth-context';
 
 const { Title } = Typography;
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleLogin = async (values) => {
     setLoading(true);
     try {
       const res = await api.post('/api/auth/login', values);
       const { token } = res.data;
-      localStorage.setItem('token', token);
+      login(token);
       message.success('登录成功');
-      setTimeout(() => {
-        router.push('/');
-      }, 100);
+      router.push('/');
     } catch {
       message.error('登录失败，请检查用户名和密码');
     } finally {
