@@ -4,7 +4,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import Link from 'next/link';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, Button } from 'antd';
 import {
   DashboardOutlined,
   FileTextOutlined,
@@ -26,6 +26,10 @@ function LayoutContent({ children }) {
   const pathname = usePathname();
   const { logout } = useAuth();
 
+  if (pathname === '/login') {
+    return <div style={{ minHeight: '100vh' }}>{children}</div>;
+  }
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider theme="light" width={200}>
@@ -36,7 +40,7 @@ function LayoutContent({ children }) {
       </Sider>
       <Layout>
         <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderBottom: '1px solid #f0f0f0' }}>
-          <LogoutOutlined style={{ fontSize: 18, cursor: 'pointer' }} onClick={logout} />
+          <Button icon={<LogoutOutlined />} onClick={logout}>退出登录</Button>
         </Header>
         <Content style={{ margin: 24, padding: 24, background: '#fff', borderRadius: 8 }}>
           {children}

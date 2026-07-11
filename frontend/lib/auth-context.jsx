@@ -27,6 +27,12 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    if (!loading && token && router.pathname === '/login') {
+      router.push('/');
+    }
+  }, [token, loading, router]);
+
   const login = useCallback((newToken) => {
     setToken(newToken);
     localStorage.setItem('token', newToken);
