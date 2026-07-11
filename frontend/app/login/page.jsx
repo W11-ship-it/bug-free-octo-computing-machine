@@ -11,6 +11,7 @@ const { Title } = Typography;
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('login');
   const router = useRouter();
   const { login } = useAuth();
 
@@ -37,6 +38,7 @@ export default function LoginPage() {
         password: values.password,
       });
       message.success('注册成功，请登录');
+      setActiveTab('login');
     } catch {
       message.error('注册失败，用户名可能已存在');
     } finally {
@@ -50,6 +52,8 @@ export default function LoginPage() {
         <Title level={3} style={{ textAlign: 'center' }}>StudyHub</Title>
         <Tabs
           centered
+          activeKey={activeTab}
+          onChange={(key) => setActiveTab(key)}
           items={[
             {
               key: 'login',
