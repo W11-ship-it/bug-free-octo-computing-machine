@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Card, Form, Input, Button, Typography, Tabs, message } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, BookOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import api from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
@@ -47,9 +47,40 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-      <Card style={{ width: 400 }}>
-        <Title level={3} style={{ textAlign: 'center' }}>StudyHub</Title>
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '20px'
+    }}>
+      <Card 
+        style={{ 
+          width: 420,
+          borderRadius: 16,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          border: 'none',
+          overflow: 'hidden'
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ 
+            width: 80, 
+            height: 80, 
+            margin: '0 auto 16px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <BookOutlined style={{ fontSize: 40, color: '#fff' }} />
+          </div>
+          <Title level={2} style={{ margin: 0, color: '#333' }}>StudyHub</Title>
+          <p style={{ color: '#999', marginTop: 8, marginBottom: 0 }}>您的智能学习助手</p>
+        </div>
+        
         <Tabs
           centered
           activeKey={activeTab}
@@ -59,15 +90,36 @@ export default function LoginPage() {
               key: 'login',
               label: '登录',
               children: (
-                <Form onFinish={handleLogin}>
+                <Form onFinish={handleLogin} size="large">
                   <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
-                    <Input prefix={<UserOutlined />} placeholder="用户名" />
+                    <Input 
+                      prefix={<UserOutlined style={{ color: '#667eea' }} />} 
+                      placeholder="用户名" 
+                      style={{ borderRadius: 8, height: 44 }}
+                    />
                   </Form.Item>
                   <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
-                    <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+                    <Input.Password 
+                      prefix={<LockOutlined style={{ color: '#667eea' }} />} 
+                      placeholder="密码" 
+                      style={{ borderRadius: 8, height: 44 }}
+                    />
                   </Form.Item>
                   <Form.Item>
-                    <Button type="primary" htmlType="submit" block loading={loading}>登录</Button>
+                    <Button 
+                      type="primary" 
+                      htmlType="submit" 
+                      block 
+                      loading={loading}
+                      style={{ 
+                        borderRadius: 8, 
+                        height: 44,
+                        fontSize: 16,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
+                      }}
+                    >登录</Button>
                   </Form.Item>
                 </Form>
               ),
@@ -76,12 +128,20 @@ export default function LoginPage() {
               key: 'register',
               label: '注册',
               children: (
-                <Form onFinish={handleRegister}>
+                <Form onFinish={handleRegister} size="large">
                   <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
-                    <Input prefix={<UserOutlined />} placeholder="用户名" />
+                    <Input 
+                      prefix={<UserOutlined style={{ color: '#667eea' }} />} 
+                      placeholder="用户名" 
+                      style={{ borderRadius: 8, height: 44 }}
+                    />
                   </Form.Item>
                   <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }, { min: 6, message: '密码至少6位' }]}>
-                    <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+                    <Input.Password 
+                      prefix={<LockOutlined style={{ color: '#667eea' }} />} 
+                      placeholder="密码" 
+                      style={{ borderRadius: 8, height: 44 }}
+                    />
                   </Form.Item>
                   <Form.Item name="confirm" dependencies={['password']} rules={[
                     { required: true, message: '请确认密码' },
@@ -92,10 +152,27 @@ export default function LoginPage() {
                       },
                     }),
                   ]}>
-                    <Input.Password prefix={<LockOutlined />} placeholder="确认密码" />
+                    <Input.Password 
+                      prefix={<LockOutlined style={{ color: '#667eea' }} />} 
+                      placeholder="确认密码" 
+                      style={{ borderRadius: 8, height: 44 }}
+                    />
                   </Form.Item>
                   <Form.Item>
-                    <Button type="primary" htmlType="submit" block loading={loading}>注册</Button>
+                    <Button 
+                      type="primary" 
+                      htmlType="submit" 
+                      block 
+                      loading={loading}
+                      style={{ 
+                        borderRadius: 8, 
+                        height: 44,
+                        fontSize: 16,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
+                      }}
+                    >注册</Button>
                   </Form.Item>
                 </Form>
               ),
