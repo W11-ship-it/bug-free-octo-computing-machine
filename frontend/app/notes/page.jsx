@@ -21,6 +21,11 @@ export default function NotesPage() {
 
   const fetchNotes = async () => {
     setLoading(true);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await api.get('/api/notes');
       setNotes(res.data.data || []);
