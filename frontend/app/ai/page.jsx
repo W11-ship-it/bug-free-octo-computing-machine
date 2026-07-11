@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Typography, Card, Button, Input, message, Space, Spin, Tag, Divider, Tabs, Popconfirm, Tooltip } from 'antd';
 import { 
   RobotOutlined, 
@@ -18,7 +18,7 @@ import {
   CopyOutlined,
   CheckOutlined,
   CodeOutlined,
-  ImageOutlined,
+  PictureOutlined,
   UploadOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -42,24 +42,124 @@ const presetQuestions = [
   '学习中遇到困难怎么办？',
 ];
 
-function ChatMessage({ message }) {
-  const renderContent = (content) => {
-    return content.split('\n').map((line, idx) => {
-      if (line.startsWith('**') && line.endsWith('**')) {
-        return <strong key={idx}>{line.slice(2, -2)}</strong>;
+const ChatMessage = React.memo(function ChatMessage({ message }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [message.content]);
+
+  const renderContent = useMemo(() => {
+    const content = message.content;
+    const parts = [];
+    let lastIndex = 0;
+    
+    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+    let match;
+    
+    while ((match = codeBlockRegex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', content: content.slice(lastIndex, match.index) });
       }
-      if (line.match(/^\d+\.\s/)) {
-        return <div key={idx} style={{ paddingLeft: 20, textIndent: -16 }}>{line}</div>;
+      parts.push({ type: 'code', language: match[1] || '', content: match[2] });
+      lastIndex = codeBlockRegex.lastIndex;
+    }
+    
+    if (lastIndex < content.length) {
+      parts.push({ type: 'text', content: content.slice(lastIndex) });
+    }
+
+    return parts.map((part, partIdx) => {
+      if (part.type === 'code') {
+        return (
+          <div key={partIdx} style={{ marginBottom: 8, borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              padding: '6px 12px', 
+              background: '#2d2d2d', 
+              color: '#fff',
+              fontSize: 12
+            }}>
+              <span style={{ display: 'flex', alignItems: 'center' }}>
+                <CodeOutlined style={{ marginRight: 6 }} />
+                {part.language || 'code'}
+              </span>
+              <Button 
+                type="text" 
+                size="small" 
+                onClick={() => { navigator.clipboard.writeText(part.content); message.success('代码已复制'); }}
+                style={{ color: '#fff' }}
+              >
+                复制
+              </Button>
+            </div>
+            <pre style={{ 
+              margin: 0, 
+              padding: 16, 
+              background: '#1e1e1e', 
+              color: '#d4d4d4',
+              fontFamily: '"Consolas", "Monaco", "Courier New", monospace',
+              fontSize: 13,
+              lineHeight: 1.6,
+              overflowX: 'auto',
+              whiteSpace: 'pre-wrap'
+            }}>
+              {part.content}
+            </pre>
+          </div>
+        );
       }
-      if (line.startsWith('- ')) {
-        return <div key={idx} style={{ paddingLeft: 20, textIndent: -16 }}>• {line.slice(2)}</div>;
-      }
-      if (line.startsWith('🔴') || line.startsWith('🟡') || line.startsWith('🟢')) {
+
+      return part.content.split('\n').map((line, idx) => {
+        if (line.startsWith('**') && line.endsWith('**')) {
+          return <strong key={idx} style={{ display: 'block', marginBottom: 4 }}>{line.slice(2, -2)}</strong>;
+        }
+        if (line.startsWith('*') && line.endsWith('*')) {
+          return <em key={idx} style={{ display: 'block', marginBottom: 4 }}>{line.slice(1, -1)}</em>;
+        }
+        if (line.match(/^\d+\.\s/)) {
+          return <div key={idx} style={{ paddingLeft: 24, textIndent: -16, marginBottom: 4 }}>{line}</div>;
+        }
+        if (line.startsWith('- ')) {
+          return <div key={idx} style={{ paddingLeft: 24, textIndent: -16, marginBottom: 4 }}>• {line.slice(2)}</div>;
+        }
+        if (line.startsWith('🔴') || line.startsWith('🟡') || line.startsWith('🟢')) {
+          return <div key={idx} style={{ marginBottom: 4, padding: 8, borderRadius: 6, background: line.startsWith('🔴') ? '#fff2f0' : line.startsWith('🟡') ? '#fffbe6' : '#f6ffed' }}>{line}</div>;
+        }
+        if (line.startsWith('> ')) {
+          return <blockquote key={idx} style={{ margin: '4px 0', padding: '8px 12px', background: '#f5f5f5', borderRadius: 6, borderLeft: '3px solid #1890ff', fontStyle: 'italic' }}>{line.slice(2)}</blockquote>;
+        }
+        const urlRegex = /https?:\/\/[^\s]+/g;
+        const hasUrl = urlRegex.test(line);
+        if (hasUrl) {
+          return (
+            <div key={idx} style={{ marginBottom: 4 }}>
+              {line.split(urlRegex).map((text, i, arr) => (
+                <span key={i}>
+                  {text}
+                  {i < arr.length - 1 && (
+                    <a 
+                      href={line.match(urlRegex)[i]} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ color: '#1890ff', textDecoration: 'underline', margin: '0 4px' }}
+                    >
+                      {line.match(urlRegex)[i]}
+                    </a>
+                  )}
+                </span>
+              ))}
+            </div>
+          );
+        }
         return <div key={idx} style={{ marginBottom: 4 }}>{line}</div>;
-      }
-      return <div key={idx}>{line}</div>;
+      });
     });
-  };
+  }, [message]);
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -91,6 +191,16 @@ function ChatMessage({ message }) {
             </span>
           )}
         </div>
+        <Tooltip title={copied ? '已复制' : '复制消息'}>
+          <Button 
+            type="text" 
+            size="small" 
+            onClick={handleCopy}
+            style={{ marginLeft: 'auto', padding: 0, color: '#999' }}
+          >
+            {copied ? <CheckOutlined /> : <CopyOutlined />}
+          </Button>
+        </Tooltip>
       </div>
       <div style={{ 
         padding: 16, 
@@ -101,11 +211,11 @@ function ChatMessage({ message }) {
         color: '#333',
         boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
       }}>
-        {renderContent(message.content)}
+        {renderContent}
       </div>
     </div>
   );
-}
+});
 
 export default function AiPage() {
   const [messages, setMessages] = useState([
@@ -120,7 +230,10 @@ export default function AiPage() {
   const [activeTab, setActiveTab] = useState('chat');
   const [chatHistory, setChatHistory] = useState([]);
   const [currentTyping, setCurrentTyping] = useState('');
+  const [typingSpeed, setTypingSpeed] = useState(30);
+  const [showImages, setShowImages] = useState([]);
   const messagesEndRef = useRef(null);
+  const typingTimerRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -139,33 +252,110 @@ export default function AiPage() {
     localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
   }, [chatHistory]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        handleSend();
+      }
+      if (e.key === 'Escape' && loading) {
+        cancelTyping();
+      }
+      if (e.key === 'c' && e.ctrlKey && !loading) {
+        e.preventDefault();
+        handleClearChat();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSend, cancelTyping, handleClearChat, loading]);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) {
+        clearInterval(typingTimerRef.current);
+      }
+    };
+  }, []);
+
   const simulateTyping = useCallback((text, callback) => {
+    if (typingTimerRef.current) {
+      clearInterval(typingTimerRef.current);
+    }
+    
     let index = 0;
     setCurrentTyping('');
     
-    const timer = setInterval(() => {
+    typingTimerRef.current = setInterval(() => {
       if (index < text.length) {
-        setCurrentTyping(text.slice(0, index + 1));
-        index++;
+        const charsPerStep = Math.min(Math.ceil(typingSpeed / 15), 3);
+        const endIndex = Math.min(index + charsPerStep, text.length);
+        setCurrentTyping(text.slice(0, endIndex));
+        index = endIndex;
       } else {
-        clearInterval(timer);
+        clearInterval(typingTimerRef.current);
+        typingTimerRef.current = null;
         callback(text);
       }
-    }, 30);
+    }, typingSpeed);
 
-    return () => clearInterval(timer);
+    return () => {
+      if (typingTimerRef.current) {
+        clearInterval(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+    };
+  }, [typingSpeed]);
+
+  const cancelTyping = useCallback(() => {
+    if (typingTimerRef.current) {
+      clearInterval(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    setCurrentTyping('');
+    setLoading(false);
+  }, []);
+
+  const handleFileUpload = useCallback((e) => {
+    const files = e.target.files || e.dataTransfer?.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64 = event.target.result;
+          setShowImages(prev => [...prev, { id: Date.now(), src: base64, name: file.name }]);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        message.warning('暂时只支持图片上传');
+      }
+    });
+  }, []);
+
+  const handleRemoveImage = useCallback((id) => {
+    setShowImages(prev => prev.filter(img => img.id !== id));
   }, []);
 
   const handleSend = useCallback(async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() && showImages.length === 0) return;
+
+    let content = inputValue.trim();
+    showImages.forEach(img => {
+      content += `\n![${img.name}](${img.src})`;
+    });
 
     const newMessage = { 
       role: 'user', 
-      content: inputValue,
+      content: content,
       time: dayjs().format(),
+      images: showImages.length > 0 ? showImages.map(img => img.src) : [],
     };
     setMessages(prev => [...prev, newMessage]);
     setInputValue('');
+    setShowImages([]);
     setLoading(true);
 
     try {
@@ -176,6 +366,7 @@ export default function AiPage() {
         '好的，我来帮你分析一下。有效的学习方法包括：\n\n- 主动学习：通过实践加深理解\n- 间隔重复：定期复习巩固记忆\n- 思维导图：可视化知识结构\n\n你想尝试其中的哪种方法？',
         '收到！让我为你生成学习建议...\n\n根据你的学习数据，我发现：\n\n📊 你本周学习了 12 小时\n🎯 完成了 8 个任务\n📝 创建了 5 篇笔记\n\n建议：保持这个节奏，继续加油！',
         '学习是一个持续的过程，关键在于：\n\n1. **保持好奇心**：对新事物保持开放的心态\n2. **坚持不懈**：每天进步一点点\n3. **善于总结**：从错误中学习\n\n你目前在学习什么？',
+        '我来帮你分析这张图片！\n\n从图片中我可以看到：\n\n- 这是一张学习相关的图片\n- 包含了关键信息\n\n如果你有具体的问题，请告诉我，我来帮你解答！',
       ];
 
       const response = responses[Math.floor(Math.random() * responses.length)];
@@ -191,7 +382,7 @@ export default function AiPage() {
       message.error('AI 服务暂时不可用');
       setLoading(false);
     }
-  }, [inputValue, simulateTyping]);
+  }, [inputValue, simulateTyping, showImages]);
 
   const handleQuickAction = useCallback(async (action) => {
     setLoading(true);
@@ -284,8 +475,8 @@ export default function AiPage() {
           </Space>
         </div>
 
-        <div style={{ display: 'flex', gap: 16 }}>
-          <div style={{ width: 280, flexShrink: 0 }}>
+        <div className="chat-container" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <div className="chat-sidebar" style={{ width: 280, flexShrink: 0, maxWidth: '100%' }}>
             <Card title="快捷操作">
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 {quickActions.map(item => (
@@ -352,7 +543,7 @@ export default function AiPage() {
             </Card>
           </div>
 
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)' }}>
+          <div className="chat-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)', minWidth: 0 }}>
             <Card style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', borderRadius: 12 }}>
               <Tabs 
                 activeKey={activeTab} 
@@ -387,6 +578,14 @@ export default function AiPage() {
                             <RobotOutlined style={{ color: '#fff', fontSize: 18 }} />
                           </div>
                           <span style={{ fontWeight: 'bold', color: '#333', fontSize: 14 }}>AI 学习助手</span>
+                          <Button 
+                            type="text" 
+                            size="small" 
+                            onClick={cancelTyping}
+                            style={{ marginLeft: 'auto', color: '#999', padding: 0 }}
+                          >
+                            取消
+                          </Button>
                         </div>
                         <div style={{ 
                           padding: 16, 
@@ -398,7 +597,7 @@ export default function AiPage() {
                           boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
                         }}>
                           {currentTyping}
-                          <span style={{ animation: 'blink 1s infinite' }}>|</span>
+                          <span style={{ animation: 'blink 1s infinite', opacity: currentTyping.length > 0 ? 1 : 0 }}>|</span>
                         </div>
                       </div>
                     )}
@@ -410,7 +609,7 @@ export default function AiPage() {
                       <div style={{ textAlign: 'center', color: '#999', padding: 40 }}>
                         <HistoryOutlined style={{ fontSize: 48, marginBottom: 12 }} />
                         <div>暂无历史记录</div>
-                        <div style={{ fontSize: 12, marginTop: 8 }}>点击"保存对话"可保存当前聊天</div>
+                        <div style={{ fontSize: 12, marginTop: 8 }}>点击&quot;保存对话&quot;可保存当前聊天</div>
                       </div>
                     ) : (
                       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -453,19 +652,66 @@ export default function AiPage() {
               
               {activeTab === 'chat' && (
                 <div style={{ padding: 16, borderTop: '1px solid #f0f0f0', background: '#fff' }}>
-                  <Space style={{ width: '100%' }}>
-                    <Input
+                  {showImages.length > 0 && (
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                      {showImages.map(img => (
+                        <div key={img.id} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', width: 80, height: 80 }}>
+                          <img src={img.src} alt={img.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <Button 
+                            type="text" 
+                            danger 
+                            size="small" 
+                            onClick={() => handleRemoveImage(img.id)}
+                            style={{ position: 'absolute', top: 4, right: 4, padding: 0, width: 24, height: 24, background: 'rgba(0,0,0,0.5)' }}
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div 
+                    style={{ 
+                      display: 'flex', 
+                      gap: 8, 
+                      alignItems: 'flex-end',
+                      border: '2px dashed transparent',
+                      borderRadius: 8,
+                      padding: showImages.length > 0 ? 0 : 8
+                    }}
+                    onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#1890ff'; }}
+                    onDragLeave={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'transparent'; }}
+                    onDrop={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'transparent'; handleFileUpload(e); }}
+                  >
+                    <Space size="small">
+                      <Button 
+                        type="text" 
+                        icon={<PictureOutlined />}
+                        onClick={() => document.getElementById('image-upload')?.click()}
+                        style={{ padding: '8px 12px' }}
+                      />
+                      <input 
+                        id="image-upload" 
+                        type="file" 
+                        accept="image/*" 
+                        multiple 
+                        onChange={handleFileUpload}
+                        style={{ display: 'none' }}
+                      />
+                    </Space>
+                    <TextArea
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder="输入你的问题，AI 来帮你..."
-                      style={{ flex: 1, borderRadius: 8 }}
+                      placeholder="输入你的问题，AI 来帮你... (支持拖拽上传图片)"
+                      style={{ flex: 1, borderRadius: 8, minHeight: 80 }}
                       size="large"
+                      autoSize={{ minRows: 2, maxRows: 6 }}
                     />
                     <Button type="primary" icon={<SendOutlined />} onClick={handleSend} loading={loading} size="large">
                       发送
                     </Button>
-                  </Space>
+                  </div>
                 </div>
               )}
             </Card>
@@ -476,6 +722,18 @@ export default function AiPage() {
           @keyframes blink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
+          }
+          @media (max-width: 768px) {
+            .chat-container {
+              flex-direction: column !important;
+            }
+            .chat-sidebar {
+              width: 100% !important;
+              max-width: 100% !important;
+            }
+            .chat-main {
+              width: 100% !important;
+            }
           }
         `}</style>
       </div>
