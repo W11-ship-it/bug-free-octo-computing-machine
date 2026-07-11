@@ -14,6 +14,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function fetchData() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
       try {
         const [notesRes, tasksRes] = await Promise.all([
           api.get('/api/notes'),

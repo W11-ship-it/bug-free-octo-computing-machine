@@ -19,7 +19,9 @@ export default function LoginPage() {
       const { token } = res.data;
       localStorage.setItem('token', token);
       message.success('登录成功');
-      router.push('/');
+      setTimeout(() => {
+        router.push('/');
+      }, 100);
     } catch {
       message.error('登录失败，请检查用户名和密码');
     } finally {

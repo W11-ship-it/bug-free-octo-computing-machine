@@ -22,6 +22,11 @@ export default function TasksPage() {
 
   const fetchTasks = async () => {
     setLoading(true);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await api.get('/api/tasks');
       setTasks(res.data.data || []);
@@ -38,7 +43,8 @@ export default function TasksPage() {
     try {
       const values = await form.validateFields();
       const payload = {
-        ...values,
+        title: values.title,
+        priority: values.priority || 'medium',
         due_date: values.due_date ? values.due_date.format('YYYY-MM-DD') : null,
       };
       await api.post('/api/tasks', payload);
@@ -46,7 +52,8 @@ export default function TasksPage() {
       setModalOpen(false);
       form.resetFields();
       fetchTasks();
-    } catch {
+    } catch (err) {
+      console.error('创建任务失败:', err);
       message.error('创建失败');
     }
   };
