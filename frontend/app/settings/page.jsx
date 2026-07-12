@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Typography, Card, Form, Input, Button, message, Space, Switch, Avatar, Divider, Modal, Upload } from 'antd';
 import { 
   UserOutlined, 
@@ -292,7 +293,7 @@ export default function SettingsPage() {
                     textAlign: 'center',
                   }}
                 >
-                  <img src={avatar} alt={`avatar-${index}`} style={{ width: 50, height: 50, borderRadius: 50 }} />
+                  <Image src={avatar} alt={`avatar-${index}`} width={50} height={50} style={{ borderRadius: 50 }} />
                   {selectedAvatar === avatar && (
                     <CheckCircleOutlined style={{ color: '#1890ff', fontSize: 16, marginTop: 4 }} />
                   )}

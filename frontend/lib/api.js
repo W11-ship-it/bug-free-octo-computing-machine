@@ -5,6 +5,12 @@ const api = axios.create({
   timeout: 10000,
 });
 
+const cache = new Map();
+
+function getCacheKey(config) {
+  return `${config.method || 'get'}:${config.url}:${JSON.stringify(config.params)}`;
+}
+
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('token');
@@ -12,6 +18,15 @@ api.interceptors.request.use((config) => {
       config.headers.Authorization = `Bearer ${token}`;
     }
   }
+  
+  if (config.cache !== false) {
+    const cacheKey = getCacheKey(config);
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < 30000) {
+      return Promise.resolve({ data: cached.data });
+    }
+  }
+  
   return config;
 });
 
@@ -25,7 +40,17 @@ function isTokenExpired(token) {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const config = response.config;
+    if (config.cache !== false) {
+      const cacheKey = getCacheKey(config);
+      cache.set(cacheKey, {
+        data: response.data,
+        timestamp: Date.now(),
+      });
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
@@ -36,8 +61,25 @@ api.interceptors.response.use(
         }
       }
     }
+    
+    if (error.response?.status >= 500) {
+      console.error('Server error:', error);
+    }
+    
     return Promise.reject(error);
   },
 );
+
+export function clearCache() {
+  cache.clear();
+}
+
+export function invalidateCache(url) {
+  cache.forEach((_, key) => {
+    if (key.includes(url)) {
+      cache.delete(key);
+    }
+  });
+}
 
 export default api;

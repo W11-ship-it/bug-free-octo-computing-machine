@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import Image from 'next/image';
 import { Typography, Card, Button, Input, message, Space, Spin, Tag, Divider, Tabs, Popconfirm, Tooltip } from 'antd';
 import { 
   RobotOutlined, 
@@ -253,25 +254,6 @@ export default function AiPage() {
   }, [chatHistory]);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.ctrlKey && e.key === 'Enter') {
-        e.preventDefault();
-        handleSend();
-      }
-      if (e.key === 'Escape' && loading) {
-        cancelTyping();
-      }
-      if (e.key === 'c' && e.ctrlKey && !loading) {
-        e.preventDefault();
-        handleClearChat();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSend, cancelTyping, handleClearChat, loading]);
-
-  useEffect(() => {
     return () => {
       if (typingTimerRef.current) {
         clearInterval(typingTimerRef.current);
@@ -458,6 +440,25 @@ export default function AiPage() {
   const handlePresetQuestion = useCallback((question) => {
     setInputValue(question);
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        handleSend();
+      }
+      if (e.key === 'Escape' && loading) {
+        cancelTyping();
+      }
+      if (e.key === 'c' && e.ctrlKey && !loading) {
+        e.preventDefault();
+        handleClearChat();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSend, cancelTyping, handleClearChat, loading]);
 
   return (
     <RequireAuth>
@@ -656,7 +657,7 @@ export default function AiPage() {
                     <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                       {showImages.map(img => (
                         <div key={img.id} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', width: 80, height: 80 }}>
-                          <img src={img.src} alt={img.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <Image src={img.src} alt={img.name} width={80} height={80} style={{ objectFit: 'cover' }} />
                           <Button 
                             type="text" 
                             danger 

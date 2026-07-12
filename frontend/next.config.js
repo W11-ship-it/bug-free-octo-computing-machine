@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 代理后端 API，开发时避免跨域问题
+  experimental: {
+    optimizeCss: false,
+  },
   async rewrites() {
     return [
       {

@@ -1,26 +1,20 @@
 'use client';
 
-import { Card, Col, Row, Statistic, Typography, List, Tag, Progress, Avatar, Button } from 'antd';
-import { BookOutlined, CheckCircleOutlined, ClockCircleOutlined, FileTextOutlined, RiseOutlined, UserOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Statistic, Typography, List, Tag, Progress, Avatar, Button, Space } from 'antd';
+import { BookOutlined, CheckCircleOutlined, ClockCircleOutlined, FileTextOutlined, RiseOutlined, UserOutlined, ArrowRightOutlined, LineChartOutlined, BarChartOutlined, CalendarOutlined, AimOutlined } from '@ant-design/icons';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { memo } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '../lib/api';
-import RequireAuth from '../lib/require-auth';
 import { useAuth } from '../lib/auth-context';
+import StatCard from '../components/StatCard';
 
 const { Title } = Typography;
 
 const priorityColors = { high: 'red', medium: 'orange', low: 'green' };
 const priorityLabels = { high: '高', medium: '中', low: '低' };
 
-const StatCard = memo(function StatCard({ title, value, prefix, suffix, loading, hoverable = true, onClick }) {
-  return (
-    <Card hoverable={hoverable} onClick={onClick} style={onClick ? { cursor: 'pointer' } : {}}>
-      <Statistic title={title} value={value} prefix={prefix} suffix={suffix} loading={loading} />
-    </Card>
-  );
-});
+
 
 const NoteItem = memo(function NoteItem({ item }) {
   return (
@@ -56,12 +50,13 @@ const TaskItem = memo(function TaskItem({ task }) {
 });
 
 export default function DashboardPage() {
-  const { token } = useAuth();
+  const { token, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState({ notes: 0, tasks: 0, completed: 0 });
+  const [stats, setStats] = useState({ notes: 0, tasks: 0, completed: 0, overdue: 0, highPriority: 0 });
   const [recentNotes, setRecentNotes] = useState([]);
   const [recentTasks, setRecentTasks] = useState([]);
   const [subjectStats, setSubjectStats] = useState({});
+  const [weeklyData, setWeeklyData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -73,10 +68,50 @@ export default function DashboardPage() {
       const notes = notesRes.data.data || [];
       const tasks = tasksRes.data.data || [];
       
+      const today = new Date();
+      const thisWeekNotes = notes.filter(n => {
+        const date = new Date(n.created_at);
+        const diffTime = Math.abs(today - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 7;
+      });
+      
+      const thisWeekTasks = tasks.filter(t => {
+        const date = new Date(t.created_at);
+        const diffTime = Math.abs(today - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 7;
+      });
+
+      const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+      const weeklyNotesData = [];
+      const weeklyTasksData = [];
+      
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dayStr = d.toISOString().split('T')[0];
+        
+        weeklyNotesData.push({
+          day: weekDays[d.getDay()],
+          count: notes.filter(n => n.created_at?.startsWith(dayStr)).length,
+        });
+        weeklyTasksData.push({
+          day: weekDays[d.getDay()],
+          count: tasks.filter(t => t.created_at?.startsWith(dayStr)).length,
+        });
+      }
+      
+      setWeeklyData({ notes: weeklyNotesData, tasks: weeklyTasksData });
+      
       setStats({
         notes: notes.length,
         tasks: tasks.length,
         completed: tasks.filter((t) => t.completed).length,
+        overdue: tasks.filter(t => !t.completed && t.due_date && new Date(t.due_date) < today).length,
+        highPriority: tasks.filter(t => t.priority === 'high' && !t.completed).length,
+        weeklyNotes: thisWeekNotes.length,
+        weeklyTasks: thisWeekTasks.length,
       });
       setRecentNotes(notes.slice(0, 5));
       setRecentTasks(tasks.slice(0, 5));
@@ -95,8 +130,16 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      fetchData();
+    }
+  }, [authLoading, isAuthenticated, fetchData]);
 
   const completionRate = useMemo(() => {
     return stats.tasks > 0 ? Math.round((stats.completed / stats.tasks) * 100) : 0;
@@ -118,8 +161,7 @@ export default function DashboardPage() {
   }, [subjectStats, subjectColors]);
 
   return (
-    <RequireAuth>
-      <div>
+    <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <Title level={3} style={{ margin: 0 }}>学习仪表盘</Title>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -128,35 +170,38 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col span={6}>
+        <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+          <Col xs={12} sm={6} lg={6}>
             <StatCard 
               title="学习笔记" 
               value={stats.notes} 
               prefix={<BookOutlined />} 
               loading={loading} 
               onClick={() => router.push('/notes')} 
+              color="#1890ff"
             />
           </Col>
-          <Col span={6}>
+          <Col xs={12} sm={6} lg={6}>
             <StatCard 
               title="待办任务" 
               value={stats.tasks - stats.completed} 
               prefix={<ClockCircleOutlined />} 
               loading={loading} 
               onClick={() => router.push('/tasks')} 
+              color="#faad14"
             />
           </Col>
-          <Col span={6}>
+          <Col xs={12} sm={6} lg={6}>
             <StatCard 
               title="已完成" 
               value={stats.completed} 
               prefix={<CheckCircleOutlined />} 
               loading={loading} 
               onClick={() => router.push('/tasks')} 
+              color="#52c41a"
             />
           </Col>
-          <Col span={6}>
+          <Col xs={12} sm={6} lg={6}>
             <StatCard 
               title="完成率" 
               value={completionRate} 
@@ -164,12 +209,56 @@ export default function DashboardPage() {
               prefix={<RiseOutlined />} 
               loading={loading} 
               onClick={() => router.push('/tasks')} 
+              color="#722ed1"
             />
           </Col>
         </Row>
 
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col span={12}>
+        <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+          <Col xs={12} sm={6} lg={6}>
+            <StatCard 
+              title="本周笔记" 
+              value={stats.weeklyNotes} 
+              prefix={<LineChartOutlined />} 
+              loading={loading} 
+              onClick={() => router.push('/notes')} 
+              color="#1890ff"
+            />
+          </Col>
+          <Col xs={12} sm={6} lg={6}>
+            <StatCard 
+              title="本周任务" 
+              value={stats.weeklyTasks} 
+              prefix={<BarChartOutlined />} 
+              loading={loading} 
+              onClick={() => router.push('/tasks')} 
+              color="#faad14"
+            />
+          </Col>
+          <Col xs={12} sm={6} lg={6}>
+            <StatCard 
+              title="已逾期" 
+              value={stats.overdue} 
+              prefix={<CalendarOutlined />} 
+              loading={loading} 
+              onClick={() => router.push('/tasks')} 
+              color="#ff4d4f"
+            />
+          </Col>
+          <Col xs={12} sm={6} lg={6}>
+            <StatCard 
+              title="高优先级" 
+              value={stats.highPriority} 
+              prefix={<AimOutlined />} 
+              loading={loading} 
+              onClick={() => router.push('/tasks')} 
+              color="#ff7875"
+            />
+          </Col>
+        </Row>
+
+        <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+          <Col xs={24} sm={12} lg={12}>
             <Card 
               title="任务完成进度" 
               loading={loading}
@@ -186,7 +275,7 @@ export default function DashboardPage() {
               </div>
             </Card>
           </Col>
-          <Col span={12}>
+          <Col xs={24} sm={12} lg={12}>
             <Card 
               title="学科分布" 
               loading={loading}
@@ -203,8 +292,41 @@ export default function DashboardPage() {
           </Col>
         </Row>
 
-        <Row gutter={16}>
-          <Col span={12}>
+        <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+          <Col xs={24}>
+            <Card 
+              title="本周学习活动" 
+              loading={loading}
+              extra={<Button type="link" icon={<ArrowRightOutlined />} onClick={() => router.push('/stats')}>查看统计</Button>}
+            >
+              {weeklyData.notes && (
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: 140, gap: 4 }}>
+                  {weeklyData.notes.map((item, idx) => (
+                    <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
+                      <div style={{ fontSize: 11, marginBottom: 4 }}>{item.day}</div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', width: '100%' }}>
+                        <div 
+                          style={{ 
+                            width: '40%', 
+                            backgroundColor: '#1890ff',
+                            borderRadius: '4px 4px 0 0',
+                            transition: 'height 0.3s ease',
+                            marginBottom: 4,
+                            height: `${Math.max(item.count * 25, 8)}px`
+                          }}
+                        />
+                        <div style={{ fontSize: 11, color: '#666' }}>{item.count}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={[12, 12]}>
+          <Col xs={24} sm={12} lg={12}>
             <Card 
               title="最近笔记" 
               extra={<><Tag color="blue">最新</Tag><Button type="link" icon={<ArrowRightOutlined />} onClick={() => router.push('/notes')} style={{ marginLeft: 8 }}>查看全部</Button></>} 
@@ -219,7 +341,7 @@ export default function DashboardPage() {
               />
             </Card>
           </Col>
-          <Col span={12}>
+          <Col xs={24} sm={12} lg={12}>
             <Card 
               title="最近任务" 
               extra={<><Tag color="orange">待办</Tag><Button type="link" icon={<ArrowRightOutlined />} onClick={() => router.push('/tasks')} style={{ marginLeft: 8 }}>查看全部</Button></>} 
@@ -236,7 +358,6 @@ export default function DashboardPage() {
           </Col>
         </Row>
       </div>
-    </RequireAuth>
   );
 }
 
