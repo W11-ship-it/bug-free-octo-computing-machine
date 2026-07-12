@@ -32,6 +32,18 @@ CREATE TABLE IF NOT EXISTS tasks (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 4. 学习计划表
+CREATE TABLE IF NOT EXISTS plans (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    type VARCHAR(10) DEFAULT 'daily' CHECK (type IN ('daily', 'weekly')),
+    subjects TEXT[] DEFAULT '{}',
+    completed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 4. 索引优化
 CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);

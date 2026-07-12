@@ -18,7 +18,7 @@ export default function LoginPage() {
   const handleLogin = async (values) => {
     setLoading(true);
     try {
-      const res = await api.post('/api/auth/login', values);
+      const res = await api.post('/auth/login', values);
       const { token } = res.data;
       login(token);
       message.success('登录成功');
@@ -33,7 +33,7 @@ export default function LoginPage() {
   const handleRegister = async (values) => {
     setLoading(true);
     try {
-      await api.post('/api/auth/register', {
+      await api.post('/auth/register', {
         username: values.username,
         password: values.password,
       });

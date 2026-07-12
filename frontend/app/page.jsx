@@ -62,8 +62,8 @@ export default function DashboardPage() {
   const fetchData = useCallback(async () => {
     try {
       const [notesRes, tasksRes] = await Promise.all([
-        api.get('/api/notes'),
-        api.get('/api/tasks'),
+        api.get('/notes'),
+        api.get('/tasks'),
       ]);
       const notes = notesRes.data.data || [];
       const tasks = tasksRes.data.data || [];

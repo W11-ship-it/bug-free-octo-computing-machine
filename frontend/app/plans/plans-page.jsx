@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import { Typography, Button, Modal, Form, Input, DatePicker, Select, Tag, message, Space, Card, Radio, Checkbox, Switch, Row, Col, Statistic } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined, ClockCircleOutlined, CheckCircleOutlined, AlertOutlined, UnorderedListOutlined, CalendarTwoTone } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../../lib/api';
+import RequireAuth from '../../lib/require-auth';
 
 const { Title } = Typography;
 
@@ -29,9 +29,6 @@ const subjectColors = {
 };
 
 export default function PlansPageComponent() {
-  const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -40,33 +37,10 @@ export default function PlansPageComponent() {
   const [activeTab, setActiveTab] = useState('daily');
   const [selectedDate, setSelectedDate] = useState(dayjs());
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.exp * 1000 > Date.now()) {
-          setIsAuthenticated(true);
-        } else {
-          localStorage.removeItem('token');
-        }
-      } catch {
-        localStorage.removeItem('token');
-      }
-    }
-    setAuthChecked(true);
-  }, []);
-
-  useEffect(() => {
-    if (authChecked && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [authChecked, isAuthenticated, router]);
-
   const fetchPlans = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/plans');
+      const res = await api.get('/plans', { cache: false });
       setPlans(res.data.data || []);
     } catch {
       message.error('加载计划失败');
@@ -76,10 +50,8 @@ export default function PlansPageComponent() {
   }, []);
 
   useEffect(() => {
-    if (authChecked && isAuthenticated) {
-      fetchPlans();
-    }
-  }, [authChecked, isAuthenticated, fetchPlans]);
+    fetchPlans();
+  }, [fetchPlans]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -97,10 +69,10 @@ export default function PlansPageComponent() {
       };
 
       if (editingPlan) {
-        await api.put(`/api/plans/${editingPlan.id}`, payload);
+        await api.put(`/plans/${editingPlan.id}`, payload);
         message.success('更新成功');
       } else {
-        await api.post('/api/plans', payload);
+        await api.post('/plans', payload);
         message.success('创建成功');
       }
       setModalOpen(false);
@@ -114,7 +86,7 @@ export default function PlansPageComponent() {
 
   const handleDelete = useCallback(async (id) => {
     try {
-      await api.delete(`/api/plans/${id}`);
+      await api.delete(`/plans/${id}`);
       message.success('删除成功');
       fetchPlans();
     } catch {
@@ -124,7 +96,7 @@ export default function PlansPageComponent() {
 
   const handleComplete = useCallback(async (id) => {
     try {
-      await api.put(`/api/plans/${id}`, { completed: true });
+      await api.put(`/plans/${id}`, { completed: true });
       message.success('已完成');
       fetchPlans();
     } catch {
@@ -172,10 +144,9 @@ export default function PlansPageComponent() {
     setModalOpen(true);
   }, [form]);
 
-  if (!authChecked) return null;
-
   return (
-    <div>
+    <RequireAuth>
+      <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, alignItems: 'flex-end' }}>
         <Title level={3} style={{ margin: 0 }}>学习计划</Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleNewPlan}>
@@ -385,6 +356,7 @@ export default function PlansPageComponent() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+      </div>
+    </RequireAuth>
   );
 }

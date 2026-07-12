@@ -14,8 +14,8 @@ export default function Reminder() {
     try {
       const now = dayjs();
       const [tasksRes, plansRes] = await Promise.all([
-        api.get('/api/tasks'),
-        api.get('/api/plans'),
+        api.get('/tasks', { cache: false }),
+        api.get('/plans', { cache: false }),
       ]);
 
       const tasks = tasksRes.data.data || [];
@@ -120,7 +120,7 @@ export default function Reminder() {
       if (reminder.type === 'task') {
         const taskId = id.split('-')[1];
         try {
-          await api.put(`/api/tasks/${taskId}`, { completed: true });
+          await api.put(`/tasks/${taskId}`, { completed: true });
           message.success('任务已完成');
         } catch {
           message.error('操作失败');
@@ -128,7 +128,7 @@ export default function Reminder() {
       } else {
         const planId = id.split('-')[1];
         try {
-          await api.put(`/api/plans/${planId}`, { completed: true });
+          await api.put(`/plans/${planId}`, { completed: true });
           message.success('计划已完成');
         } catch {
           message.error('操作失败');

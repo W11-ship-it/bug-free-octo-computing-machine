@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
-import { useRouter } from 'next/navigation';
 import { Typography, Button, List, Modal, Form, Input, DatePicker, Select, Tag, Checkbox, message, Space, Card, Radio, Popconfirm, Statistic } from 'antd';
 import { PlusOutlined, DeleteOutlined, SearchOutlined, UpOutlined, DownOutlined, ClockCircleOutlined, BellOutlined, RepeatOutlined, CheckCircleOutlined, UndoOutlined, EditOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../../lib/api';
+import RequireAuth from '../../lib/require-auth';
 
 const { Title } = Typography;
 
@@ -66,9 +66,6 @@ const TaskCard = memo(function TaskCard({ task, onEdit, onDelete, onComplete, se
 });
 
 export default function TasksPageComponent() {
-  const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -83,29 +80,6 @@ export default function TasksPageComponent() {
   const searchTimeoutRef = useRef(null);
   const [editingTask, setEditingTask] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.exp * 1000 > Date.now()) {
-          setIsAuthenticated(true);
-        } else {
-          localStorage.removeItem('token');
-        }
-      } catch {
-        localStorage.removeItem('token');
-      }
-    }
-    setAuthChecked(true);
-  }, []);
-
-  useEffect(() => {
-    if (authChecked && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [authChecked, isAuthenticated, router]);
 
   useEffect(() => {
     if (searchTimeoutRef.current) {
@@ -125,7 +99,7 @@ export default function TasksPageComponent() {
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/tasks');
+      const res = await api.get('/tasks');
       setTasks(res.data.data || []);
     } catch {
       message.error('加载任务失败');
@@ -191,10 +165,10 @@ export default function TasksPageComponent() {
       };
 
       if (editingTask) {
-        await api.put(`/api/tasks/${editingTask.id}`, payload);
+        await api.put(`/tasks/${editingTask.id}`, payload);
         message.success('更新成功');
       } else {
-        await api.post('/api/tasks', payload);
+        await api.post('/tasks', payload);
         message.success('创建成功');
       }
       setModalOpen(false);
@@ -208,7 +182,7 @@ export default function TasksPageComponent() {
 
   const handleDelete = useCallback(async (id) => {
     try {
-      await api.delete(`/api/tasks/${id}`);
+      await api.delete(`/tasks/${id}`);
       message.success('删除成功');
       fetchTasks();
     } catch {
@@ -218,7 +192,7 @@ export default function TasksPageComponent() {
 
   const handleComplete = useCallback(async (id) => {
     try {
-      await api.put(`/api/tasks/${id}`, { completed: true });
+      await api.put(`/tasks/${id}`, { completed: true });
       message.success('任务完成');
       fetchTasks();
     } catch {
@@ -228,7 +202,7 @@ export default function TasksPageComponent() {
 
   const handleBatchComplete = useCallback(async () => {
     try {
-      await Promise.all(selectedIds.map(id => api.put(`/api/tasks/${id}`, { completed: true })));
+      await Promise.all(selectedIds.map(id => api.put(`/tasks/${id}`, { completed: true })));
       message.success(`已完成 ${selectedIds.length} 个任务`);
       setSelectedIds([]);
       fetchTasks();
@@ -239,7 +213,7 @@ export default function TasksPageComponent() {
 
   const handleBatchDelete = useCallback(async () => {
     try {
-      await Promise.all(selectedIds.map(id => api.delete(`/api/tasks/${id}`)));
+      await Promise.all(selectedIds.map(id => api.delete(`/tasks/${id}`)));
       message.success(`已删除 ${selectedIds.length} 个任务`);
       setSelectedIds([]);
       fetchTasks();
@@ -277,7 +251,7 @@ export default function TasksPageComponent() {
       const repeatMap = { '1day': 1, '1week': 7, '1month': 30 };
       nextDate = nextDate.add(repeatMap[task.reminder] || 1, 'day');
       
-      await api.post('/api/tasks', {
+      await api.post('/tasks', {
         title: task.title,
         priority: task.priority,
         due_date: nextDate.format('YYYY-MM-DD'),
@@ -307,7 +281,7 @@ export default function TasksPageComponent() {
   }, [form]);
 
   const handleQuickAdd = useCallback((title) => {
-    api.post('/api/tasks', {
+    api.post('/tasks', {
       title,
       priority: 'medium',
       due_date: dayjs().format('YYYY-MM-DD'),
@@ -319,10 +293,9 @@ export default function TasksPageComponent() {
     });
   }, [fetchTasks]);
 
-  if (!authChecked) return null;
-
   return (
-    <div>
+    <RequireAuth>
+      <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, alignItems: 'flex-end' }}>
           <Title level={3} style={{ margin: 0 }}>任务管理</Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleNewTask}>
@@ -480,5 +453,6 @@ export default function TasksPageComponent() {
           </Form>
         </Modal>
       </div>
+    </RequireAuth>
   );
 }

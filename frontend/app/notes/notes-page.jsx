@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
-import { useRouter } from 'next/navigation';
 import { Typography, Button, Table, Modal, Form, Input, Tag, message, Space, Card, Select, Checkbox, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AppstoreOutlined, TableOutlined, DownloadOutlined, UndoOutlined } from '@ant-design/icons';
 import api from '../../lib/api';
+import RequireAuth from '../../lib/require-auth';
 
 const { Title, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -58,9 +58,6 @@ const TableAction = memo(function TableAction({ record, onEdit, onDelete }) {
 });
 
 export default function NotesPageComponent() {
-  const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -73,29 +70,6 @@ export default function NotesPageComponent() {
   const [detailNote, setDetailNote] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const searchTimeoutRef = useRef(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.exp * 1000 > Date.now()) {
-          setIsAuthenticated(true);
-        } else {
-          localStorage.removeItem('token');
-        }
-      } catch {
-        localStorage.removeItem('token');
-      }
-    }
-    setAuthChecked(true);
-  }, []);
-
-  useEffect(() => {
-    if (authChecked && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [authChecked, isAuthenticated, router]);
 
   useEffect(() => {
     if (searchTimeoutRef.current) {
@@ -115,7 +89,7 @@ export default function NotesPageComponent() {
   const fetchNotes = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/notes');
+      const res = await api.get('/notes');
       setNotes(res.data.data || []);
     } catch {
       message.error('加载笔记失败');
@@ -146,10 +120,10 @@ export default function NotesPageComponent() {
     try {
       const values = await form.validateFields();
       if (editingNote) {
-        await api.put(`/api/notes/${editingNote.id}`, values);
+        await api.put(`/notes/${editingNote.id}`, values);
         message.success('更新成功');
       } else {
-        await api.post('/api/notes', values);
+        await api.post('/notes', values);
         message.success('创建成功');
       }
       setModalOpen(false);
@@ -163,7 +137,7 @@ export default function NotesPageComponent() {
 
   const handleDelete = useCallback(async (id) => {
     try {
-      await api.delete(`/api/notes/${id}`);
+      await api.delete(`/notes/${id}`);
       message.success('删除成功');
       fetchNotes();
     } catch {
@@ -197,7 +171,7 @@ export default function NotesPageComponent() {
 
   const handleBatchDelete = useCallback(async () => {
     try {
-      await Promise.all(selectedIds.map(id => api.delete(`/api/notes/${id}`)));
+      await Promise.all(selectedIds.map(id => api.delete(`/notes/${id}`)));
       message.success(`已删除 ${selectedIds.length} 篇笔记`);
       setSelectedIds([]);
       fetchNotes();
@@ -270,10 +244,9 @@ export default function NotesPageComponent() {
     setModalOpen(true);
   }, [form]);
 
-  if (!authChecked) return null;
-
   return (
-    <div>
+    <RequireAuth>
+      <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, alignItems: 'flex-end' }}>
           <Title level={3} style={{ margin: 0 }}>学习笔记</Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleNewNote}>
@@ -406,5 +379,6 @@ export default function NotesPageComponent() {
           )}
         </Modal>
       </div>
+    </RequireAuth>
   );
 }

@@ -1,8 +1,9 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000',
+  baseURL: typeof window !== 'undefined' ? '/api' : process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000',
   timeout: 10000,
+  maxRedirects: 0,
 });
 
 const cache = new Map();
@@ -19,11 +20,15 @@ api.interceptors.request.use((config) => {
     }
   }
   
+  if (config.url === '/plans' && config.method === 'get') {
+    config.url = '/plans/';
+  }
+  
   if (config.cache !== false) {
     const cacheKey = getCacheKey(config);
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < 30000) {
-      return Promise.resolve({ data: cached.data });
+      return Promise.resolve({ data: cached.data, config });
     }
   }
   

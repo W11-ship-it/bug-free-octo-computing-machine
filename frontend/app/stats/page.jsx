@@ -14,7 +14,10 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../../lib/api';
+
+
 import { LineChart, PieChart, BarChart, MultiBarChart, RadarChart, ScatterChart, FunnelChart } from '../../components/Charts';
+import RequireAuth from '../../lib/require-auth';
 
 const { Title } = Typography;
 
@@ -115,9 +118,9 @@ export default function StatsPage() {
       setLoading(true);
       try {
         const [notesRes, tasksRes, plansRes] = await Promise.all([
-          api.get('/api/notes'),
-          api.get('/api/tasks'),
-          api.get('/api/plans'),
+          api.get('/notes/', { cache: false }),
+          api.get('/tasks/', { cache: false }),
+          api.get('/plans/', { cache: false }),
         ]);
         setNotes(notesRes.data.data || []);
         setTasks(tasksRes.data.data || []);
@@ -290,8 +293,9 @@ export default function StatsPage() {
   }, []);
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, alignItems: 'flex-end' }}>
+    <RequireAuth>
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, alignItems: 'flex-end' }}>
         <Title level={3} style={{ margin: 0 }}>学习统计</Title>
         <Space>
           <Button icon={<ClockCircleOutlined />} onClick={() => handleAddMinutes(15)}>
@@ -495,6 +499,7 @@ export default function StatsPage() {
           </Card>
         </Col>
       </Row>
-    </div>
+      </div>
+    </RequireAuth>
   );
 }
