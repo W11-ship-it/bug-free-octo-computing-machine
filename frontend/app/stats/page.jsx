@@ -13,11 +13,18 @@ import {
   AimOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import api from '../../lib/api';
-
-
 import { LineChart, PieChart, BarChart, MultiBarChart, RadarChart, ScatterChart, FunnelChart } from '../../components/Charts';
 import RequireAuth from '../../lib/require-auth';
+
+const api = {
+  get: async (url, config = {}) => {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(url.startsWith('http') ? url : `/api${url}`, { headers, ...config });
+    return { data: await response.json() };
+  },
+};
 
 const { Title } = Typography;
 
@@ -118,9 +125,9 @@ export default function StatsPage() {
       setLoading(true);
       try {
         const [notesRes, tasksRes, plansRes] = await Promise.all([
-          api.get('/notes/', { cache: false }),
-          api.get('/tasks/', { cache: false }),
-          api.get('/plans/', { cache: false }),
+          api.get('/notes', { cache: 'no-store' }),
+          api.get('/tasks', { cache: 'no-store' }),
+          api.get('/plans', { cache: 'no-store' }),
         ]);
         setNotes(notesRes.data.data || []);
         setTasks(tasksRes.data.data || []);

@@ -4,8 +4,20 @@ import { useState } from 'react';
 import { Card, Form, Input, Button, Typography, Tabs, message } from 'antd';
 import { UserOutlined, LockOutlined, BookOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
-import api from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
+
+const api = {
+  post: async (url, data, config = {}) => {
+    const headers = { 'Content-Type': 'application/json' };
+    const response = await fetch(url.startsWith('http') ? url : `/api${url}`, { 
+      method: 'POST', 
+      headers, 
+      body: JSON.stringify(data),
+      ...config 
+    });
+    return { data: await response.json() };
+  },
+};
 
 const { Title } = Typography;
 

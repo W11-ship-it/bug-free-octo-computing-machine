@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (!loading && token && router.pathname === '/login') {
+    if (!loading && token && typeof window !== 'undefined' && window.location.pathname === '/login') {
       router.push('/');
     }
   }, [token, loading, router]);

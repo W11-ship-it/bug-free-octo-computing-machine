@@ -1,21 +1,50 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { notification, Button, Badge } from 'antd';
+import { notification, Button, Badge, message } from 'antd';
 import { BellOutlined, AlertOutlined, ClockCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import api from '../lib/api';
+import { useAuth } from '../lib/auth-context';
+
+const api = {
+  get: async (url, config = {}) => {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(url.startsWith('http') ? url : `/api${url}`, { headers, ...config });
+    return { data: await response.json() };
+  },
+  put: async (url, data, config = {}) => {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(url.startsWith('http') ? url : `/api${url}`, { 
+      method: 'PUT', 
+      headers, 
+      body: JSON.stringify(data),
+      ...config 
+    });
+    return { data: await response.json() };
+  },
+};
 
 export default function Reminder() {
+  const { isAuthenticated } = useAuth();
   const [reminders, setReminders] = useState([]);
   const [count, setCount] = useState(0);
 
   const fetchReminders = useCallback(async () => {
+    if (!isAuthenticated) {
+      setReminders([]);
+      setCount(0);
+      return;
+    }
+
     try {
       const now = dayjs();
       const [tasksRes, plansRes] = await Promise.all([
-        api.get('/tasks', { cache: false }),
-        api.get('/plans', { cache: false }),
+        api.get('/tasks', { cache: 'no-store' }),
+        api.get('/plans', { cache: 'no-store' }),
       ]);
 
       const tasks = tasksRes.data.data || [];
@@ -81,10 +110,25 @@ export default function Reminder() {
       newReminders.sort((a, b) => a.time.diff(b.time));
       setReminders(newReminders);
       setCount(newReminders.length);
-    } catch {
-      console.error('获取提醒失败');
+    } catch (error) {
+      if (error.response) {
+        console.error('获取提醒失败:', error.response.data);
+        if (error.response.status === 401) {
+          message.warning('登录状态已失效，请重新登录');
+        } else if (error.response.status >= 500) {
+          message.error('服务器错误，无法获取提醒');
+        } else {
+          message.error('获取提醒失败');
+        }
+      } else if (error.request) {
+        console.error('获取提醒失败 - 网络错误:', error.message);
+        message.warning('网络连接异常，请检查网络');
+      } else {
+        console.error('获取提醒失败:', error.message);
+        message.error('获取提醒失败');
+      }
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchReminders();

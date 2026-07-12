@@ -5,9 +5,19 @@ import { BookOutlined, CheckCircleOutlined, ClockCircleOutlined, FileTextOutline
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { memo } from 'react';
 import { useRouter } from 'next/navigation';
-import api from '../lib/api';
 import { useAuth } from '../lib/auth-context';
+
+const api = {
+  get: async (url, config = {}) => {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(url.startsWith('http') ? url : `/api${url}`, { headers, ...config });
+    return { data: await response.json() };
+  },
+};
 import StatCard from '../components/StatCard';
+import RequireAuth from '../lib/require-auth';
 
 const { Title } = Typography;
 
@@ -49,8 +59,8 @@ const TaskItem = memo(function TaskItem({ task }) {
   );
 });
 
-export default function DashboardPage() {
-  const { token, isAuthenticated, loading: authLoading } = useAuth();
+function DashboardPageContent() {
+  const { token } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState({ notes: 0, tasks: 0, completed: 0, overdue: 0, highPriority: 0 });
   const [recentNotes, setRecentNotes] = useState([]);
@@ -130,16 +140,8 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
-
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      fetchData();
-    }
-  }, [authLoading, isAuthenticated, fetchData]);
+    fetchData();
+  }, [fetchData]);
 
   const completionRate = useMemo(() => {
     return stats.tasks > 0 ? Math.round((stats.completed / stats.tasks) * 100) : 0;
@@ -358,6 +360,14 @@ export default function DashboardPage() {
           </Col>
         </Row>
       </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <RequireAuth>
+      <DashboardPageContent />
+    </RequireAuth>
   );
 }
 

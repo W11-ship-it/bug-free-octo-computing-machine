@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { Typography, Button, Table, Modal, Form, Input, Tag, message, Space, Card, Select, Checkbox, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, AppstoreOutlined, TableOutlined, DownloadOutlined, UndoOutlined } from '@ant-design/icons';
-import api from '../../lib/api';
 import RequireAuth from '../../lib/require-auth';
+import api from '../../lib/api';
 
 const { Title, Paragraph } = Typography;
 const { TextArea } = Input;

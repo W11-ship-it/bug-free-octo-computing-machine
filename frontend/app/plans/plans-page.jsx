@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Typography, Button, Modal, Form, Input, DatePicker, Select, Tag, message, Space, Card, Radio, Checkbox, Switch, Row, Col, Statistic } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined, ClockCircleOutlined, CheckCircleOutlined, AlertOutlined, UnorderedListOutlined, CalendarTwoTone } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import api from '../../lib/api';
 import RequireAuth from '../../lib/require-auth';
+import api from '../../lib/api';
 
 const { Title } = Typography;
 
@@ -40,7 +40,7 @@ export default function PlansPageComponent() {
   const fetchPlans = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/plans', { cache: false });
+      const res = await api.get('/plans', { cache: 'no-store' });
       setPlans(res.data.data || []);
     } catch {
       message.error('加载计划失败');

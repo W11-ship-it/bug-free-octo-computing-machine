@@ -30,11 +30,13 @@ def create_app():
     from app.routes.notes import notes_bp
     from app.routes.tasks import tasks_bp
     from app.routes.plans import plans_bp
+    from app.routes.init import init_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(notes_bp, url_prefix='/api/notes')
     app.register_blueprint(tasks_bp, url_prefix='/api/tasks')
     app.register_blueprint(plans_bp, url_prefix='/api/plans')
+    app.register_blueprint(init_bp, url_prefix='/api/init')
 
     # 健康检查
     @app.route('/api/health')
