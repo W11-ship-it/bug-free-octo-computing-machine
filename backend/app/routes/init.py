@@ -25,11 +25,10 @@ def init_database():
             sql_content = f.read()
         
         project_ref = supabase_url.replace('https://', '').replace('.supabase.co', '')
-        url = f"https://api.supabase.com/v1/projects/{project_ref}/database/query"
+        url = f"https://api.supabase.com/v1/projects/{project_ref}/database/queries"
         
         response = requests.post(url, headers=headers, json={
-            'query': sql_content,
-            'format': 'json'
+            'query': sql_content
         })
         
         if response.status_code in [200, 201, 202, 204]:
