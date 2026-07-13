@@ -3,6 +3,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 import logging
+from supabase import create_client
 
 load_dotenv()
 
@@ -12,6 +13,35 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
 )
 logger = logging.getLogger(__name__)
+
+
+def ensure_tables():
+    """确保数据库表存在"""
+    try:
+        supabase_url = os.getenv('SUPABASE_URL')
+        service_key = os.getenv('SUPABASE_SERVICE_KEY')
+        
+        if not supabase_url or not service_key:
+            logger.warning("未配置Supabase连接信息，跳过表创建")
+            return
+        
+        supabase = create_client(supabase_url, service_key)
+        
+        sql_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.sql')
+        with open(sql_file_path, 'r', encoding='utf-8') as f:
+            sql_content = f.read()
+        
+        sql_statements = [s.strip() for s in sql_content.split(';') if s.strip()]
+        
+        for stmt in sql_statements:
+            try:
+                supabase.sql(stmt).execute()
+            except Exception as e:
+                logger.warning(f"执行SQL语句失败: {e}")
+        
+        logger.info("数据库表检查/创建完成")
+    except Exception as e:
+        logger.error(f"数据库初始化失败: {e}")
 
 
 def create_app():
@@ -43,5 +73,7 @@ def create_app():
     def health():
         return {"status": "ok", "message": "StudyHub API is running"}
 
+    ensure_tables()
+    
     logger.info("StudyHub 后端服务启动成功")
     return app
