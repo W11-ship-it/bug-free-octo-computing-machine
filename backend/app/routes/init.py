@@ -2,6 +2,7 @@
 
 from flask import Blueprint, jsonify, current_app
 import requests
+import os
 
 init_bp = Blueprint('init', __name__)
 
@@ -19,34 +20,19 @@ def init_database():
     }
     
     try:
-        create_plans_sql = """
-        CREATE TABLE IF NOT EXISTS plans (
-            id BIGSERIAL PRIMARY KEY,
-            user_id UUID NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            type VARCHAR(50) DEFAULT 'daily',
-            subject VARCHAR(100) DEFAULT '',
-            duration INTEGER DEFAULT 60,
-            time TIME WITHOUT TIME ZONE,
-            date DATE,
-            days TEXT[],
-            reminder BOOLEAN DEFAULT FALSE,
-            completed BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
-        CREATE INDEX IF NOT EXISTS idx_plans_user_id ON plans(user_id);
-        CREATE INDEX IF NOT EXISTS idx_plans_created_at ON plans(created_at);
-        """
+        sql_file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database.sql')
+        with open(sql_file_path, 'r', encoding='utf-8') as f:
+            sql_content = f.read()
         
-        url = f"{supabase_url}/sql/v1"
+        project_ref = supabase_url.replace('https://', '').replace('.supabase.co', '')
+        url = f"https://api.supabase.com/v1/projects/{project_ref}/database/query"
         
         response = requests.post(url, headers=headers, json={
-            'query': create_plans_sql,
+            'query': sql_content,
             'format': 'json'
         })
         
-        if response.status_code in [200, 201]:
+        if response.status_code in [200, 201, 202, 204]:
             return jsonify({"message": "数据库初始化成功"}), 200
         else:
             return jsonify({"error": f"初始化失败: {response.text}"}), 500
