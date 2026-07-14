@@ -5,7 +5,7 @@ import jwt
 import hashlib
 import logging
 from datetime import datetime, timedelta
-from app.utils import get_supabase
+from supabase import create_client
 
 logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
@@ -14,6 +14,13 @@ auth_bp = Blueprint('auth', __name__)
 def hash_password(password):
     """简单的密码哈希（生产环境建议使用 bcrypt）"""
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+
+def get_supabase_client():
+    """获取Supabase客户端"""
+    url = current_app.config['SUPABASE_URL']
+    key = current_app.config['SUPABASE_SERVICE_KEY'] or current_app.config['SUPABASE_KEY']
+    return create_client(url, key)
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -30,27 +37,29 @@ def register():
         if len(password) < 6:
             return jsonify({"error": "密码长度不能少于6位"}), 400
 
-        supabase = get_supabase()
+        supabase = get_supabase_client()
 
-        # 检查用户名是否已存在
-        logger.info(f"检查用户名是否存在: {username}")
-        existing = supabase.table('users').select('id').eq('username', username).execute()
-        logger.info(f"查询结果: {existing}")
+        try:
+            existing = supabase.sql(f"SELECT id FROM users WHERE username = '{username}'").execute()
+            logger.info(f"检查用户名结果: {existing.data}")
+            
+            if existing.data and len(existing.data) > 0:
+                return jsonify({"error": "用户名已存在"}), 409
+        except Exception as e:
+            logger.warning(f"检查用户名失败，可能表不存在: {e}")
+
+        insert_result = supabase.sql(
+            f"INSERT INTO users (username, password_hash) VALUES ('{username}', '{hash_password(password)}') RETURNING id"
+        ).execute()
         
-        if existing.data:
-            logger.info(f"用户名已存在: {username}")
-            return jsonify({"error": "用户名已存在"}), 409
-
-        # 创建用户
-        logger.info(f"创建新用户: {username}")
-        result = supabase.table('users').insert({
-            "username": username,
-            "password_hash": hash_password(password),
-        }).execute()
-        logger.info(f"创建结果: {result}")
-
-        logger.info(f"新用户注册成功: {username}")
-        return jsonify({"message": "注册成功", "user_id": result.data[0]['id']}), 201
+        logger.info(f"插入用户结果: {insert_result.data}")
+        
+        if insert_result.data and len(insert_result.data) > 0:
+            user_id = insert_result.data[0]['id']
+            logger.info(f"新用户注册成功: {username}, ID: {user_id}")
+            return jsonify({"message": "注册成功", "user_id": user_id}), 201
+        else:
+            return jsonify({"error": "注册失败"}), 500
     
     except Exception as e:
         logger.error(f"注册失败: {str(e)}", exc_info=True)
@@ -68,25 +77,20 @@ def login():
         if not username or not password:
             return jsonify({"error": "用户名和密码不能为空"}), 400
 
-        supabase = get_supabase()
+        supabase = get_supabase_client()
 
-        # 查询用户
-        logger.info(f"查询用户: {username}")
-        result = supabase.table('users').select('*').eq('username', username).execute()
-        logger.info(f"查询结果: {result}")
+        result = supabase.sql(f"SELECT * FROM users WHERE username = '{username}'").execute()
+        logger.info(f"查询用户结果: {result.data}")
         
-        if not result.data:
-            logger.info(f"用户不存在: {username}")
+        if not result.data or len(result.data) == 0:
             return jsonify({"error": "用户名或密码错误"}), 401
 
         user = result.data[0]
         logger.info(f"找到用户: {user}")
         
         if user['password_hash'] != hash_password(password):
-            logger.info(f"密码不匹配: {username}")
             return jsonify({"error": "用户名或密码错误"}), 401
 
-        # 生成 JWT
         token = jwt.encode(
             {
                 "user_id": user['id'],
