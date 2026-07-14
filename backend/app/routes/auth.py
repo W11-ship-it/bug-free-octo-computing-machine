@@ -39,20 +39,18 @@ def register():
 
         supabase = get_supabase_client()
 
-        try:
-            existing = supabase.sql(f"SELECT id FROM users WHERE username = '{username}'").execute()
-            logger.info(f"检查用户名结果: {existing.data}")
-            
-            if existing.data and len(existing.data) > 0:
-                return jsonify({"error": "用户名已存在"}), 409
-        except Exception as e:
-            logger.warning(f"检查用户名失败，可能表不存在: {e}")
-
-        insert_result = supabase.sql(
-            f"INSERT INTO users (username, password_hash) VALUES ('{username}', '{hash_password(password)}') RETURNING id"
-        ).execute()
+        result = supabase.table('users').select('id').eq('username', username).execute()
+        logger.info(f"检查用户名结果: {result}")
         
-        logger.info(f"插入用户结果: {insert_result.data}")
+        if result.data and len(result.data) > 0:
+            return jsonify({"error": "用户名已存在"}), 409
+
+        insert_result = supabase.table('users').insert({
+            "username": username,
+            "password_hash": hash_password(password),
+        }).execute()
+        
+        logger.info(f"插入用户结果: {insert_result}")
         
         if insert_result.data and len(insert_result.data) > 0:
             user_id = insert_result.data[0]['id']
@@ -79,8 +77,8 @@ def login():
 
         supabase = get_supabase_client()
 
-        result = supabase.sql(f"SELECT * FROM users WHERE username = '{username}'").execute()
-        logger.info(f"查询用户结果: {result.data}")
+        result = supabase.table('users').select('*').eq('username', username).execute()
+        logger.info(f"查询用户结果: {result}")
         
         if not result.data or len(result.data) == 0:
             return jsonify({"error": "用户名或密码错误"}), 401

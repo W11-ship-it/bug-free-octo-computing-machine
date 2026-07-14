@@ -27,6 +27,18 @@ def ensure_tables():
         
         supabase = create_client(supabase_url, service_key)
         
+        logger.info("检查数据库表是否存在...")
+        try:
+            tables = supabase.sql("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'").execute()
+            existing_tables = [t['table_name'] for t in tables.data]
+            logger.info(f"已存在的表: {existing_tables}")
+            
+            if 'users' in existing_tables:
+                logger.info("users表已存在，跳过初始化")
+                return
+        except Exception as e:
+            logger.warning(f"检查表失败: {e}")
+        
         sql_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.sql')
         with open(sql_file_path, 'r', encoding='utf-8') as f:
             sql_content = f.read()
