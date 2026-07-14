@@ -28,8 +28,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (!loading && token && typeof window !== 'undefined' && window.location.pathname === '/login') {
-      router.push('/');
+    if (!loading && token && typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      if (currentPath === '/login' || currentPath === '/register') {
+        router.push('/');
+      }
     }
   }, [token, loading, router]);
 
