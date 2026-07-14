@@ -5,7 +5,8 @@ import jwt
 import hashlib
 import logging
 from datetime import datetime, timedelta
-from supabase import create_client
+import psycopg2
+import os
 
 logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
@@ -16,11 +17,21 @@ def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
 
-def get_supabase_client():
-    """获取Supabase客户端"""
-    url = current_app.config['SUPABASE_URL']
-    key = current_app.config['SUPABASE_SERVICE_KEY'] or current_app.config['SUPABASE_KEY']
-    return create_client(url, key)
+def get_db_connection():
+    """获取数据库连接"""
+    supabase_url = current_app.config['SUPABASE_URL']
+    service_key = current_app.config['SUPABASE_SERVICE_KEY']
+    
+    db_url = f"{supabase_url}/postgres"
+    conn = psycopg2.connect(
+        host=f"{supabase_url.replace('https://', '')}",
+        database="postgres",
+        user="postgres",
+        password=service_key,
+        port=5432,
+        sslmode='require'
+    )
+    return conn
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -37,27 +48,34 @@ def register():
         if len(password) < 6:
             return jsonify({"error": "密码长度不能少于6位"}), 400
 
-        supabase = get_supabase_client()
+        conn = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+            existing = cursor.fetchone()
+            
+            if existing:
+                return jsonify({"error": "用户名已存在"}), 409
 
-        result = supabase.table('users').select('id').eq('username', username).execute()
-        logger.info(f"检查用户名结果: {result}")
-        
-        if result.data and len(result.data) > 0:
-            return jsonify({"error": "用户名已存在"}), 409
+            cursor.execute(
+                "INSERT INTO users (username, password_hash) VALUES (%s, %s) RETURNING id",
+                (username, hash_password(password))
+            )
+            user_id = cursor.fetchone()[0]
+            conn.commit()
 
-        insert_result = supabase.table('users').insert({
-            "username": username,
-            "password_hash": hash_password(password),
-        }).execute()
-        
-        logger.info(f"插入用户结果: {insert_result}")
-        
-        if insert_result.data and len(insert_result.data) > 0:
-            user_id = insert_result.data[0]['id']
             logger.info(f"新用户注册成功: {username}, ID: {user_id}")
             return jsonify({"message": "注册成功", "user_id": user_id}), 201
-        else:
-            return jsonify({"error": "注册失败"}), 500
+        except psycopg2.Error as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"数据库错误: {str(e)}")
+            return jsonify({"error": f"注册失败: {str(e)}"}), 500
+        finally:
+            if conn:
+                conn.close()
     
     except Exception as e:
         logger.error(f"注册失败: {str(e)}", exc_info=True)
@@ -75,32 +93,40 @@ def login():
         if not username or not password:
             return jsonify({"error": "用户名和密码不能为空"}), 400
 
-        supabase = get_supabase_client()
+        conn = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT id, username, password_hash FROM users WHERE username = %s", (username,))
+            user = cursor.fetchone()
+            
+            if not user:
+                return jsonify({"error": "用户名或密码错误"}), 401
 
-        result = supabase.table('users').select('*').eq('username', username).execute()
-        logger.info(f"查询用户结果: {result}")
-        
-        if not result.data or len(result.data) == 0:
-            return jsonify({"error": "用户名或密码错误"}), 401
+            user_id, db_username, password_hash = user
+            
+            if password_hash != hash_password(password):
+                return jsonify({"error": "用户名或密码错误"}), 401
 
-        user = result.data[0]
-        logger.info(f"找到用户: {user}")
-        
-        if user['password_hash'] != hash_password(password):
-            return jsonify({"error": "用户名或密码错误"}), 401
+            token = jwt.encode(
+                {
+                    "user_id": user_id,
+                    "username": db_username,
+                    "exp": datetime.utcnow() + timedelta(days=7),
+                },
+                current_app.config['SECRET_KEY'],
+                algorithm='HS256',
+            )
 
-        token = jwt.encode(
-            {
-                "user_id": user['id'],
-                "username": user['username'],
-                "exp": datetime.utcnow() + timedelta(days=7),
-            },
-            current_app.config['SECRET_KEY'],
-            algorithm='HS256',
-        )
-
-        logger.info(f"用户登录成功: {username}")
-        return jsonify({"token": token, "username": user['username']})
+            logger.info(f"用户登录成功: {db_username}")
+            return jsonify({"token": token, "username": db_username})
+        except psycopg2.Error as e:
+            logger.error(f"数据库错误: {str(e)}")
+            return jsonify({"error": f"登录失败: {str(e)}"}), 500
+        finally:
+            if conn:
+                conn.close()
     
     except Exception as e:
         logger.error(f"登录失败: {str(e)}", exc_info=True)
