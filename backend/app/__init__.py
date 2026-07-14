@@ -25,7 +25,11 @@ def ensure_tables():
             logger.warning("未配置Supabase连接信息，跳过表创建")
             return
         
-        supabase = create_client(supabase_url, service_key)
+        import urllib.parse
+        parsed_url = urllib.parse.urlparse(supabase_url)
+        base_url = f"{parsed_url.scheme}://{parsed_url.hostname}"
+        
+        supabase = create_client(base_url, service_key)
         
         logger.info("检查数据库表是否存在...")
         try:
@@ -49,7 +53,7 @@ def ensure_tables():
         for stmt in create_table_stmts:
             try:
                 import requests
-                url = f"{supabase_url}/rest/v1/rpc/execute_sql"
+                url = f"{base_url}/rest/v1/rpc/execute_sql"
                 headers = {
                     'Authorization': f'Bearer {service_key}',
                     'apikey': service_key,

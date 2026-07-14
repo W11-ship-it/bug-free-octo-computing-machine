@@ -6,7 +6,7 @@ import hashlib
 import logging
 from datetime import datetime, timedelta
 import psycopg2
-import os
+import urllib.parse
 
 logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
@@ -22,9 +22,11 @@ def get_db_connection():
     supabase_url = current_app.config['SUPABASE_URL']
     service_key = current_app.config['SUPABASE_SERVICE_KEY']
     
-    db_url = f"{supabase_url}/postgres"
+    parsed_url = urllib.parse.urlparse(supabase_url)
+    host = parsed_url.hostname or supabase_url.replace('https://', '').replace('http://', '').split('/')[0]
+    
     conn = psycopg2.connect(
-        host=f"{supabase_url.replace('https://', '')}",
+        host=host,
         database="postgres",
         user="postgres",
         password=service_key,

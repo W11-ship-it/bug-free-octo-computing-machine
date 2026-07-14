@@ -3,6 +3,7 @@
 import os
 import jwt
 import logging
+import urllib.parse
 from functools import wraps
 from flask import request, jsonify, current_app
 from supabase import create_client
@@ -10,16 +11,25 @@ from supabase import create_client
 logger = logging.getLogger(__name__)
 
 
+def get_supabase_url():
+    """获取清理后的 Supabase 基础 URL"""
+    url = current_app.config['SUPABASE_URL']
+    parsed_url = urllib.parse.urlparse(url)
+    if parsed_url.hostname:
+        return f"{parsed_url.scheme}://{parsed_url.hostname}"
+    return url
+
+
 def get_supabase():
     """获取 Supabase 客户端（使用 service key，用于后端操作）"""
-    url = current_app.config['SUPABASE_URL']
+    url = get_supabase_url()
     key = current_app.config['SUPABASE_SERVICE_KEY'] or current_app.config['SUPABASE_KEY']
     return create_client(url, key)
 
 
 def get_user_supabase(token):
     """使用用户 token 获取 Supabase 客户端（用于 RLS 场景）"""
-    url = current_app.config['SUPABASE_URL']
+    url = get_supabase_url()
     return create_client(url, token)
 
 
