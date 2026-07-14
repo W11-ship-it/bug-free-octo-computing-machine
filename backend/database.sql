@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     priority VARCHAR(10) DEFAULT 'medium' CHECK (priority IN ('high', 'medium', 'low')),
     due_date DATE,
     completed BOOLEAN DEFAULT FALSE,
+    category VARCHAR(100),
+    reminder VARCHAR(20),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
