@@ -15,7 +15,11 @@ const api = {
       body: JSON.stringify(data),
       ...config 
     });
-    return { data: await response.json() };
+    const result = { data: await response.json(), status: response.status };
+    if (!response.ok) {
+      throw result;
+    }
+    return result;
   },
 };
 
@@ -35,8 +39,8 @@ export default function LoginPage() {
       login(token);
       message.success('登录成功');
       router.push('/');
-    } catch {
-      message.error('登录失败，请检查用户名和密码');
+    } catch (err) {
+      message.error(err.data?.error || '登录失败，请检查用户名和密码');
     } finally {
       setLoading(false);
     }
@@ -51,8 +55,8 @@ export default function LoginPage() {
       });
       message.success('注册成功，请登录');
       setActiveTab('login');
-    } catch {
-      message.error('注册失败，用户名可能已存在');
+    } catch (err) {
+      message.error(err.data?.error || '注册失败');
     } finally {
       setLoading(false);
     }

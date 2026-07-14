@@ -29,17 +29,13 @@ def ensure_tables():
         
         logger.info("检查数据库表是否存在...")
         try:
-            tables = supabase.sql("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'").execute()
-            existing_tables = [t['table_name'] for t in tables.data]
-            logger.info(f"已存在的表: {existing_tables}")
-            
-            if 'users' in existing_tables:
-                logger.info("users表已存在，跳过初始化")
-                return
+            result = supabase.table('users').select('id').limit(1).execute()
+            logger.info("users表已存在，跳过初始化")
+            return
         except Exception as e:
-            logger.warning(f"检查表失败: {e}")
+            logger.warning(f"检查表失败（可能表不存在）: {e}")
         
-        sql_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.sql')
+        sql_file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database.sql')
         with open(sql_file_path, 'r', encoding='utf-8') as f:
             sql_content = f.read()
         
@@ -52,9 +48,16 @@ def ensure_tables():
         
         for stmt in create_table_stmts:
             try:
-                result = supabase.sql(stmt).execute()
+                import requests
+                url = f"{supabase_url}/rest/v1/rpc/execute_sql"
+                headers = {
+                    'Authorization': f'Bearer {service_key}',
+                    'apikey': service_key,
+                    'Content-Type': 'application/json',
+                }
+                response = requests.post(url, headers=headers, json={'sql': stmt})
                 logger.info(f"执行表创建SQL: {stmt[:50]}...")
-                logger.info(f"执行结果: {result}")
+                logger.info(f"HTTP状态码: {response.status_code}")
             except Exception as e:
                 logger.warning(f"执行SQL语句失败（可能表已存在）: {e}")
         
