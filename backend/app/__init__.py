@@ -33,15 +33,24 @@ def ensure_tables():
         
         sql_statements = [s.strip() for s in sql_content.split(';') if s.strip()]
         
+        create_table_stmts = []
         for stmt in sql_statements:
+            if stmt.upper().startswith('CREATE TABLE'):
+                create_table_stmts.append(stmt)
+        
+        for stmt in create_table_stmts:
             try:
-                supabase.sql(stmt).execute()
+                result = supabase.sql(stmt).execute()
+                logger.info(f"执行表创建SQL: {stmt[:50]}...")
+                logger.info(f"执行结果: {result}")
             except Exception as e:
-                logger.warning(f"执行SQL语句失败: {e}")
+                logger.warning(f"执行SQL语句失败（可能表已存在）: {e}")
         
         logger.info("数据库表检查/创建完成")
     except Exception as e:
         logger.error(f"数据库初始化失败: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def create_app():
